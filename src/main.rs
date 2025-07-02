@@ -1,20 +1,7 @@
 use iced::widget::{button, column, container, row, scrollable, text, Button};
-use iced::{alignment::Alignment, executor, theme, Application, Background, Border, Color, Command, Element, Length, Padding, Settings, Shadow, Size, Theme, Vector};
+use iced::{alignment::Alignment, Background, Border, Color, Element, Length, Padding, Shadow, Theme, Vector};
 use iced::gradient::Linear;
-use iced::window::{self, Id};
-
-pub fn main() -> iced::Result {
-    let mut settings = Settings::default();
-    settings.window = window::Settings {
-        size: Size::new(1600.0, 1200.0),
-        decorations: true,  // show native title bar
-        transparent: false, // disable transparency
-        resizable: true,
-        ..Default::default()
-    };
-
-    ChangesPanel::run(settings)
-}
+use iced::widget::button::Status;
 
 #[derive(Debug, Clone, Copy)]
 enum ChangeType { Added, Modified, Deleted }
@@ -22,28 +9,17 @@ enum ChangeType { Added, Modified, Deleted }
 #[derive(Debug, Clone)]
 struct ChangeItem { change_type: ChangeType, title: String, meta: String, icon: String }
 
-#[derive(Default)]
+#[derive(Debug)]
 struct ChangesPanel { changes: Vec<ChangeItem> }
 
-#[derive(Debug, Clone)]
-enum Message {
-    AcceptAll,
-    ReviewChange(usize),
-    IgnoreChange(usize),
-    FinishReview,
-    Close,
-    Minimize,
-    ToggleMax,
-    RowClicked(usize),
+impl Default for ChangesPanel {
+    fn default() -> Self {
+        ChangesPanel::new()
+    }
 }
 
-impl Application for ChangesPanel {
-    type Executor = executor::Default;
-    type Message  = Message;
-    type Theme    = Theme;
-    type Flags    = ();
-
-    fn new(_: ()) -> (Self, Command<Message>) {
+impl ChangesPanel {
+    fn new() -> Self {
         let sample = vec![
             ChangeItem{change_type:ChangeType::Added,   title:"Added"    .into(), meta:"Manlajra  •  By Hassan, Mar 5".into(), icon:"●".into()},
             ChangeItem{change_type:ChangeType::Deleted, title:"Deleted"  .into(), meta:"Manlajra  •  By Hassan, Mar 5".into(), icon:"●".into()},
@@ -56,166 +32,212 @@ impl Application for ChangesPanel {
             ChangeItem{change_type:ChangeType::Modified,title:"Modified" .into(), meta:"Mar 5  •  By Hassan, Mar 5".into(), icon:"○".into()},
             ChangeItem{change_type:ChangeType::Deleted, title:"Modified" .into(), meta:"Mar 5  •  By Hassan, Mar 5".into(), icon:"□".into()},
         ];
-        (Self { changes: sample }, Command::none())
-    }
 
-    fn title(&self) -> String { "All Changes Panel".into() }
-
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
-        use Message::*;
-        match message {
-            RowClicked(idx) => { println!("Row {idx} clicked"); Command::none() },
-            Close       => window::close::<Self::Message>(window::Id::MAIN),
-            Minimize    => window::minimize::<Self::Message>(window::Id::MAIN, true),
-            ToggleMax   => window::toggle_maximize::<Self::Message>(window::Id::MAIN),
-
-            // demo handlers
-            AcceptAll                => { println!("Accept All"); Command::none() }
-            ReviewChange(i)          => { println!("Review {i}"); Command::none() }
-            IgnoreChange(i)          => { println!("Ignore {i}"); Command::none() }
-            FinishReview             => { println!("Finish Review"); Command::none() }
-        }
-    }
-
-    fn view(&self) -> Element<Message> {
-        let header = container(
-            row![
-                text("All Changes").size(24).style(Color::from_rgb8(0xdb,0xea,0xfe)),
-                row![].width(Length::Fill),
-                button(text("Accept All").size(14).style(Color::from_rgb8(0xdb,0xea,0xfe)))
-                    .padding([6,22])
-                    .style(theme::Button::Custom(Box::new(AcceptAllButton)))
-                    .on_press(Message::AcceptAll)
-            ]
-                .align_items(Alignment::Center)
-                .width(Length::Fill)
-                .spacing(20)
-        )
-            .padding([0,0,0,0])
-            .style(theme::Container::Custom(Box::new(HeaderBar)))
-            .width(Length::Fill);
-
-        let analysis = container(
-            column![
-                text("ANALYSIS SUMMARY").size(14).style(Color::from_rgb8(0xff,0xcc,0x4d)),
-                text("Found 15 critical issues across multiple categories: 8 security vulnerabilities (SQL injection risks), 3 bugs (type mismatches and typos), 2 performance issues (N+1 queries and large file processing), 12 clean code violations (long methods, large classes, magic numbers), 8 architecture issues (business logic in resolvers, missing service layer), and 6 duplicate code patterns (repeated validation, CRUD operations, query building).")
-                    .size(13)
-                    .style(Color::from_rgb8(0xeb,0xf4,0xff)),
-                text("Most critical are the SQL injection vulnerabilities from string concatenation in query building.")
-                    .size(13)
-                    .style(Color::from_rgb8(0xff,0x57,0x57)),
-            ]
-                .spacing(4)
-        )
-            .padding(18)
-            .style(theme::Container::Custom(Box::new(AnalysisSummary)))
-            .width(Length::Fill);
-
-        let rows = self.changes.iter().enumerate().fold(column![].spacing(2), |col,(i,ch)| {
-            let colour = match ch.change_type {
-                ChangeType::Added    => Color::from_rgb8(0x7b,0xfd,0x6b),
-                ChangeType::Modified => Color::from_rgb8(0xff,0x9f,0x4d),
-                ChangeType::Deleted  => Color::from_rgb8(0xff,0x57,0x57),
-            };
-            let (label,msg) = match ch.change_type {
-                ChangeType::Added => ("Review", Message::ReviewChange(i)),
-                _                 => ("Ignore", Message::IgnoreChange(i)),
-            };
-
-            let inner = row![
-                row![text(&ch.icon).style(colour).size(11).width(Length::Fixed(20.0)),
-                     text(&ch.title).style(colour).size(15),
-                     text(&ch.meta).style(Color::from_rgb8(0x6b,0x72,0x80)).size(13)]
-                    .spacing(14)
-                    .align_items(Alignment::Center)
-                    .width(Length::Fill),
-                button(text(label).size(13).style(Color::from_rgb8(0xdb,0xea,0xfe)))
-                    .padding([6,20])
-                    .style(theme::Button::Custom(Box::new(SecondaryButton)))
-                    .on_press(msg)
-            ]
-                .align_items(Alignment::Center)
-                .spacing(20);
-
-            let row_btn: Button<Message> = button(inner)
-                .padding([12,10])
-                .style(theme::Button::Custom(Box::new(ChangeRowButton)))
-                .on_press(Message::RowClicked(i));
-
-            col.push(row_btn)
-        });
-
-        let changes = scrollable(rows).height(Length::Shrink);
-
-        let footer = container(
-            button(text("Finish Review").size(14).style(Color::from_rgb8(0xdb,0xea,0xfe)))
-                .padding([6,22])
-                .style(theme::Button::Custom(Box::new(FinishReviewButton)))
-                .on_press(Message::FinishReview)
-        )
-            .width(Length::Fill)
-            .align_x(iced::alignment::Horizontal::Right);
-
-        let panel = container(
-            column![header, analysis, changes, footer]
-                .spacing(24)
-                .padding(Padding::from([32,28,24,28]))
-        )
-            .style(theme::Container::Custom(Box::new(MainPanel)))
-            .width(Length::Shrink)
-            .height(Length::Shrink);
-
-        container(
-            container(panel)
-                .style(theme::Container::Custom(Box::new(MainPanel)))
-                .width(Length::Fill)
-                .height(Length::Fill)
-        )
-            .style(theme::Container::Custom(Box::new(RootBg)))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(Padding::from([50,150,50,150]))
-            .into()
+        ChangesPanel { changes: sample }
     }
 }
 
-struct RootBg;
-struct MainPanel;
-struct HeaderBar;
-struct AnalysisSummary;
-struct AcceptAllButton;
-struct SecondaryButton;
-struct FinishReviewButton;
-struct ChangeRowButton;
+#[derive(Debug, Clone)]
+enum Message {
+    AcceptAll,
+    ReviewChange(usize),
+    IgnoreChange(usize),
+    FinishReview,
+    RowClicked(usize),
+}
 
-impl container::StyleSheet for RootBg {
-    type Style = Theme;
-    fn appearance(&self, _: &Self::Style) -> container::Appearance {
+fn accept_all_btn_style(theme: &Theme, status: Status) -> button::Style {
+    let active_style = button::Style {
+        background: Some(Background::Color(Color::from_rgb8(0x11, 0x14, 0x1b))),
+        border: Border { color: Color::from_rgb8(0x07, 0x20, 0x27), width: 1.0, radius: 100.0.into() },
+        shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.45), offset: Vector::new(0.0, 2.0), blur_radius: 6.0 },
+        text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
+    };
 
-        let linear = Linear {
-            angle: iced::Radians(0.0),
-            stops: [
-                Some(iced::gradient::ColorStop { offset: 0.0, color: Color::from_rgb8(0x12, 0x16, 0x1f) }),
-                Some(iced::gradient::ColorStop { offset: 0.7, color: Color::from_rgb8(0x09, 0x0b, 0x10) }),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            ]
+    let hovered_style = button::Style {
+        background: Some(Background::Color(Color::from_rgb8(0x08, 0x34, 0x3e))),
+        border: Border { color: Color::from_rgb8(0x07, 0x20, 0x27), width: 1.0, radius: 100.0.into() },
+        shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.6), offset: Vector::new(0.0, 3.0), blur_radius: 10.0 },
+        text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
+    };
+    match status {
+        Status::Active => active_style,
+        Status::Hovered => hovered_style,
+        _ => button::primary(theme, status),
+    }
+}
+
+pub fn main() -> iced::Result {
+    iced::application("My app", update, view)
+        .window_size(iced::Size::new(1600.0, 1200.0))
+        .run()
+}
+
+fn update(model: &mut ChangesPanel, message: Message) {
+    // Initialize with sample data if empty
+    if model.changes.is_empty() {
+        *model = ChangesPanel::new();
+    }
+
+    match message {
+        Message::RowClicked(idx) => { println!("Row {idx} clicked"); },
+        Message::AcceptAll                => { println!("Accept All"); }
+        Message::ReviewChange(i)          => { println!("Review {i}"); }
+        Message::IgnoreChange(i)          => { println!("Ignore {i}"); }
+        Message::FinishReview             => { println!("Finish Review"); }
+    }
+}
+
+fn view(model: &ChangesPanel) -> Element<Message> {
+    println!("{:?}", model);
+    let main_white_color = Color::from_rgb8(0xdb, 0xea, 0xfe);
+    let text_color = |color: Color | {
+        move |_theme: &Theme| { text::Style { color: Some(color.clone()) } }
+    };
+
+    let get_text_element = |label: String, size: f32, color: Color | {
+        text(label).size(size).style(text_color(color))
+    };
+
+    let accept_all_btn = button(get_text_element("Accept All".to_string(), 14.0, main_white_color))
+        .padding([6,22])
+        .style(accept_all_btn_style)
+        .on_press(Message::AcceptAll);
+
+    let header_container_style = |_theme: &Theme| {
+        container::Style {
+            text_color: None,
+            background: Some(Background::Color(Color::from_rgb8(0x11, 0x14, 0x1b))),
+            border: Border { color: Color::TRANSPARENT, width: 0.0, radius: 20.0.into() },
+            shadow: Default::default(),
+        }
+    };
+
+    let header_container_content = row![get_text_element("All Changes".to_string(), 24.0, main_white_color), row![].width(Length::Fill), accept_all_btn]
+        .align_y(Alignment::Center)
+        .width(Length::Fill)
+        .spacing(20);
+
+    let header = container(header_container_content).padding(Padding::ZERO).style(header_container_style).width(Length::Fill);
+
+    let analysis_container_content = column![
+        get_text_element("ANALYSIS SUMMARY".to_string(), 14.0, Color::from_rgb8(0xff,0xcc,0x4d)),
+        get_text_element("Found 15 critical issues across multiple categories: 8 security vulnerabilities (SQL injection risks), 3 bugs (type mismatches and typos), 2 performance issues (N+1 queries and large file processing), 12 clean code violations (long methods, large classes, magic numbers), 8 architecture issues (business logic in resolvers, missing service layer), and 6 duplicate code patterns (repeated validation, CRUD operations, query building).".to_string(), 13.0, Color::from_rgb8(0xeb,0xf4,0xff)),
+        get_text_element("Most critical are the SQL injection vulnerabilities from string concatenation in query building.".to_string(), 13.0, Color::from_rgb8(0xff,0x57,0x57)),
+    ].spacing(4);
+
+    let analysis_style = |_theme: &Theme| {
+        container::Style {
+            text_color: None,
+            background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.03))),
+            border: Border { color: Color::from_rgb8(0xff, 0x57, 0x57), width: 4.0, radius: 12.0.into() },
+            shadow: Default::default(),
+        }
+    };
+
+    let analysis = container(analysis_container_content).padding(18).style(analysis_style).width(Length::Fill);
+
+    let rows = model.changes.iter().enumerate().fold(column![].spacing(2), |col,(i,ch)| {
+
+        let colour = match ch.change_type {
+            ChangeType::Added    => Color::from_rgb8(0x7b,0xfd,0x6b),
+            ChangeType::Modified => Color::from_rgb8(0xff,0x9f,0x4d),
+            ChangeType::Deleted  => Color::from_rgb8(0xff,0x57,0x57),
         };
 
-        container::Appearance {
-            background: Some(Background::from(linear)),
-            ..Default::default()
-        }
-    }
-}
+        let (label,msg) = match ch.change_type {
+            ChangeType::Added => ("Review", Message::ReviewChange(i)),
+            _                 => ("Ignore", Message::IgnoreChange(i)),
+        };
 
-impl container::StyleSheet for MainPanel {
-    type Style = Theme;
-    fn appearance(&self, _: &Self::Style) -> container::Appearance {
+        let secondary_btn_style = |theme: &Theme, status: Status| {
+            let active_style = button::Style {
+                background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.05))),
+                text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
+                border: Border { color: Color::TRANSPARENT, width: 0.0, radius: 100.0.into() },
+                ..Default::default()
+            };
+
+            let hovered_style = button::Style {
+                background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.12))),
+                text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
+                border: Border { color: Color::TRANSPARENT, width: 0.0, radius: 100.0.into() },
+                ..Default::default()
+            };
+            match status {
+                Status::Active => active_style,
+                Status::Hovered => hovered_style,
+                _ => button::primary(theme, status),
+            }
+        };
+
+
+
+        let text_rows = row![
+            get_text_element(ch.icon.to_string(), 11.0, colour).width(Length::Fixed(20.0)),
+            get_text_element(ch.title.to_string(), 15.0, colour),
+            get_text_element(ch.meta.to_string(), 13.0, Color::from_rgb8(0x6b,0x72,0x80))
+        ];
+
+        let inner_rows = row![
+            text_rows.spacing(14).align_y(Alignment::Center).width(Length::Fill),
+            button(get_text_element(label.to_string(), 13.0, Color::from_rgb8(0xdb,0xea,0xfe))).padding([6,20]).style(secondary_btn_style).on_press(msg)
+        ];
+
+        let inner = inner_rows.align_y(Alignment::Center).spacing(20);
+
+        let row_btn_style = |theme: &Theme, status: Status| {
+            let active_style = button::Style {
+                background: None,
+                border: Border { radius: 14.0.into(), ..Default::default() },
+                text_color: Color::TRANSPARENT,
+                ..Default::default()
+            };
+
+            let hovered_style = button::Style {
+                background: Some(Background::Color(Color::from_rgba(255.0,255.0,255.0,0.04))),
+                border: Border { radius: 14.0.into(), ..Default::default() },
+                text_color: Color::TRANSPARENT,
+                ..Default::default()
+            };
+            match status {
+                Status::Active => active_style,
+                Status::Hovered => hovered_style,
+                _ => button::primary(theme, status),
+            }
+        };
+
+        let row_btn: Button<Message> = button(inner).padding([12,10]).style(row_btn_style).on_press(Message::RowClicked(i));
+        col.push(row_btn)
+    });
+
+    let changes = scrollable(rows).height(Length::Shrink);
+
+    let finish_review_btn_style = |theme: &Theme, status: Status| {
+        let active_style = button::Style {
+            background: Some(Background::Color(Color::from_rgb8(0x0b, 0x0d, 0x12))),
+            border: Border { color: Color::from_rgb8(0x07, 0x20, 0x27), width: 1.0, radius: 100.0.into() },
+            shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.45), offset: Vector::new(0.0, 2.0), blur_radius: 6.0 },
+            text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
+        };
+
+        let hovered_style = button::Style {
+            background: Some(Background::Color(Color::from_rgb8(0x08, 0x34, 0x3e))),
+            border: Border { color: Color::from_rgb8(0x07, 0x20, 0x27), width: 1.0, radius: 100.0.into() },
+            shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.6), offset: Vector::new(0.0, 3.0), blur_radius: 10.0 },
+            text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
+        };
+        match status {
+            Status::Active => active_style,
+            Status::Hovered => hovered_style,
+            _ => button::primary(theme, status),
+        }
+
+    };
+    let finish_review_btn = button(get_text_element("Finish Review".to_string(), 14.0, Color::from_rgb8(0xdb,0xea,0xfe))).padding([6,22]).style(finish_review_btn_style).on_press(Message::FinishReview);
+    let footer = container(finish_review_btn).width(Length::Fill).align_x(iced::alignment::Horizontal::Right);
+
+    let main_panel_style = |_theme: &Theme| {
         let linear = Linear {
             angle: iced::Radians(std::f32::consts::PI), // 180 degrees = π radians
             stops: [
@@ -236,107 +258,44 @@ impl container::StyleSheet for MainPanel {
             ],
         };
 
-        container::Appearance {
+        container::Style {
             background: Some(Background::from(linear)),
             border: Border { color: Color::TRANSPARENT, width: 0.0, radius: 20.0.into() },
             shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.6), offset: Vector::new(0.0, 6.0), blur_radius: 24.0 },
             ..Default::default()
         }
-    }
-}
+    };
 
-impl container::StyleSheet for HeaderBar {
-    type Style = Theme;
-    fn appearance(&self, _: &Self::Style) -> container::Appearance {
-        container::Appearance {
-            background: Some(Background::Color(Color::from_rgb8(0x11, 0x14, 0x1b))),
-            border: Border { color: Color::TRANSPARENT, width: 0.0, radius: 20.0.into() },
+    let panel = container(column![header, analysis, changes, footer].spacing(24).padding(Padding::new(0.0).top(32).bottom(28).left(24).right(28)))
+        .style(main_panel_style)
+        .width(Length::Shrink)
+        .height(Length::Shrink);
+
+    let roog_bg_style = |_theme: &Theme| {
+        let linear = Linear {
+            angle: iced::Radians(0.0),
+            stops: [
+                Some(iced::gradient::ColorStop { offset: 0.0, color: Color::from_rgb8(0x12, 0x16, 0x1f) }),
+                Some(iced::gradient::ColorStop { offset: 0.7, color: Color::from_rgb8(0x09, 0x0b, 0x10) }),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ]
+        };
+
+        container::Style {
+            background: Some(Background::from(linear)),
             ..Default::default()
         }
-    }
-}
+    };
 
-impl container::StyleSheet for AnalysisSummary {
-    type Style = Theme;
-    fn appearance(&self, _: &Self::Style) -> container::Appearance {
-        container::Appearance {
-            background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.03))),
-            border: Border { color: Color::from_rgb8(0xff, 0x57, 0x57), width: 4.0, radius: 12.0.into() },
-            ..Default::default()
-        }
-    }
-}
-
-impl button::StyleSheet for ChangeRowButton {
-    type Style = Theme;
-
-    fn active(&self, _: &Self::Style) -> button::Appearance {
-        button::Appearance {
-            background: None,                       // transparent
-            border: Border { radius: 14.0.into(), ..Default::default() },
-            text_color: Color::TRANSPARENT,         // inner labels keep their own colour
-            ..Default::default()
-        }
-    }
-
-    fn hovered(&self, style: &Self::Style) -> button::Appearance {
-        let mut a = self.active(style);
-        a.background = Some(Background::Color(Color::from_rgba(255.0,255.0,255.0,0.04))); // subtle highlight
-        a
-    }
-}
-
-impl button::StyleSheet for AcceptAllButton {
-    type Style = Theme;
-    fn active(&self, _: &Self::Style) -> button::Appearance {
-        button::Appearance {
-            background: Some(Background::Color(Color::from_rgb8(0x11, 0x14, 0x1b))),
-            border: Border { color: Color::from_rgb8(0x07, 0x20, 0x27), width: 1.0, radius: 100.0.into() },
-            shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.45), offset: Vector::new(0.0, 2.0), blur_radius: 6.0 },
-            text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
-            ..Default::default()
-        }
-    }
-    fn hovered(&self, s: &Self::Style) -> button::Appearance {
-        let mut a = self.active(s);
-        a.background = Some(Background::Color(Color::from_rgb8(0x08, 0x34, 0x3e)));
-        a.shadow = Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.6), offset: Vector::new(0.0, 3.0), blur_radius: 10.0 };
-        a
-    }
-}
-
-impl button::StyleSheet for SecondaryButton {
-    type Style = Theme;
-    fn active(&self, _: &Self::Style) -> button::Appearance {
-        button::Appearance {
-            background: Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.05))),
-            text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
-            border: Border { color: Color::TRANSPARENT, width: 0.0, radius: 100.0.into() },
-            ..Default::default()
-        }
-    }
-    fn hovered(&self, s: &Self::Style) -> button::Appearance {
-        let mut a = self.active(s);
-        a.background = Some(Background::Color(Color::from_rgba(1.0, 1.0, 1.0, 0.12)));
-        a
-    }
-}
-
-impl button::StyleSheet for FinishReviewButton {
-    type Style = Theme;
-    fn active(&self, _: &Self::Style) -> button::Appearance {
-        button::Appearance {
-            background: Some(Background::Color(Color::from_rgb8(0x0b, 0x0d, 0x12))),
-            border: Border { color: Color::from_rgb8(0x07, 0x20, 0x27), width: 1.0, radius: 100.0.into() },
-            shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.45), offset: Vector::new(0.0, 2.0), blur_radius: 6.0 },
-            text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
-            ..Default::default()
-        }
-    }
-    fn hovered(&self, s: &Self::Style) -> button::Appearance {
-        let mut a = self.active(s);
-        a.background = Some(Background::Color(Color::from_rgb8(0x08, 0x34, 0x3e)));
-        a.shadow = Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.6), offset: Vector::new(0.0, 3.0), blur_radius: 10.0 };
-        a
-    }
+    container(container(panel).style(main_panel_style).width(Length::Fill).height(Length::Fill))
+        .style(roog_bg_style)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding(Padding::new(0.0).top(50).bottom(50).left(150).right(150))
+        .into()
 }
