@@ -5,6 +5,6 @@ mod enums;
 
 pub fn main() -> iced::Result {
     iced::application("My app", FileTree::update, FileTree::view)
-        .window_size(iced::Size::new(1600.0, 1200.0))
+        .window_size(iced::Size::new(2400.0, 1800.0))
         .run_with(|| (FileTree::new(), iced::Task::none()))
 }
