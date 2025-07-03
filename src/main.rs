@@ -46,27 +46,6 @@ enum Message {
     RowClicked(usize),
 }
 
-fn accept_all_btn_style(theme: &Theme, status: Status) -> button::Style {
-    let active_style = button::Style {
-        background: Some(Background::Color(Color::from_rgb8(0x11, 0x14, 0x1b))),
-        border: Border { color: Color::from_rgb8(0x07, 0x20, 0x27), width: 1.0, radius: 100.0.into() },
-        shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.45), offset: Vector::new(0.0, 2.0), blur_radius: 6.0 },
-        text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
-    };
-
-    let hovered_style = button::Style {
-        background: Some(Background::Color(Color::from_rgb8(0x08, 0x34, 0x3e))),
-        border: Border { color: Color::from_rgb8(0x07, 0x20, 0x27), width: 1.0, radius: 100.0.into() },
-        shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.6), offset: Vector::new(0.0, 3.0), blur_radius: 10.0 },
-        text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
-    };
-    match status {
-        Status::Active => active_style,
-        Status::Hovered => hovered_style,
-        _ => button::primary(theme, status),
-    }
-}
-
 pub fn main() -> iced::Result {
     iced::application("My app", update, view)
         .window_size(iced::Size::new(1600.0, 1200.0))
@@ -97,6 +76,29 @@ fn view(model: &ChangesPanel) -> Element<Message> {
 
     let get_text_element = |label: String, size: f32, color: Color | {
         text(label).size(size).style(text_color(color))
+    };
+
+
+    let accept_all_btn_style = |theme: &Theme, status: Status| {
+        let active_style = button::Style {
+            background: Some(Background::Color(Color::from_rgb8(0x11, 0x14, 0x1b))),
+            border: Border { color: Color::from_rgb8(0x07, 0x20, 0x27), width: 1.0, radius: 100.0.into() },
+            shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.45), offset: Vector::new(0.0, 2.0), blur_radius: 6.0 },
+            text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
+        };
+
+        let hovered_style = button::Style {
+            background: Some(Background::Color(Color::from_rgb8(0x08, 0x34, 0x3e))),
+            border: Border { color: Color::from_rgb8(0x07, 0x20, 0x27), width: 1.0, radius: 100.0.into() },
+            shadow: Shadow { color: Color::from_rgba(0.0, 0.0, 0.0, 0.6), offset: Vector::new(0.0, 3.0), blur_radius: 10.0 },
+            text_color: Color::from_rgb8(0xdb, 0xea, 0xfe),
+        };
+        match status {
+            Status::Active => active_style,
+            Status::Pressed => active_style,
+            Status::Hovered => hovered_style,
+            _ => button::primary(theme, status),
+        }
     };
 
     let accept_all_btn = button(get_text_element("Accept All".to_string(), 14.0, main_white_color))
@@ -164,14 +166,14 @@ fn view(model: &ChangesPanel) -> Element<Message> {
                 border: Border { color: Color::TRANSPARENT, width: 0.0, radius: 100.0.into() },
                 ..Default::default()
             };
+
             match status {
                 Status::Active => active_style,
                 Status::Hovered => hovered_style,
+                Status::Pressed => active_style,
                 _ => button::primary(theme, status),
             }
         };
-
-
 
         let text_rows = row![
             get_text_element(ch.icon.to_string(), 11.0, colour).width(Length::Fixed(20.0)),
@@ -202,6 +204,7 @@ fn view(model: &ChangesPanel) -> Element<Message> {
             };
             match status {
                 Status::Active => active_style,
+                Status::Pressed => active_style,
                 Status::Hovered => hovered_style,
                 _ => button::primary(theme, status),
             }
@@ -229,6 +232,7 @@ fn view(model: &ChangesPanel) -> Element<Message> {
         };
         match status {
             Status::Active => active_style,
+            Status::Pressed => active_style,
             Status::Hovered => hovered_style,
             _ => button::primary(theme, status),
         }
@@ -271,7 +275,7 @@ fn view(model: &ChangesPanel) -> Element<Message> {
         .width(Length::Shrink)
         .height(Length::Shrink);
 
-    let roog_bg_style = |_theme: &Theme| {
+    let root_bg_style = |_theme: &Theme| {
         let linear = Linear {
             angle: iced::Radians(0.0),
             stops: [
@@ -293,7 +297,7 @@ fn view(model: &ChangesPanel) -> Element<Message> {
     };
 
     container(container(panel).style(main_panel_style).width(Length::Fill).height(Length::Fill))
-        .style(roog_bg_style)
+        .style(root_bg_style)
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(Padding::new(0.0).top(50).bottom(50).left(150).right(150))
